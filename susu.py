@@ -89,3 +89,45 @@ class SusuGroup:
             "total_paid": self.payments[key],
             "owes": self.remaining_this_week(key),
         }
+
+    def outstanding_balances(self):
+        outstanding = []
+        for key in self.member_order:
+            owed = self.remaining_this_week(key)
+            if owed > 0:
+                outstanding.append({"name": self.members[key], "owes": owed})
+        return outstanding
+
+    def close_week(self):
+        if not self.member_order:
+            raise ValueError("Add at least one member before closing a week.")
+
+        outstanding = self.outstanding_balances()
+        if outstanding:
+            return {
+                "closed": False,
+                "week": self.current_week,
+                "outstanding": outstanding,
+            }
+
+        recipient_index = (self.current_week - 1) % len(self.member_order)
+        recipient_key = self.member_order[recipient_index]
+        recipient = self.members[recipient_key]
+        pot = self.weekly_contribution * len(self.member_order)
+        week = self.current_week
+
+        self.payout_history.append({
+            "week": week,
+            "recipient": recipient,
+            "amount": pot,
+        })
+        self.current_week += 1
+        for key in self.member_order:
+            self.payments[key] = 0
+
+        return {
+            "closed": True,
+            "week": week,
+            "recipient": recipient,
+            "amount": pot,
+        }
