@@ -131,3 +131,127 @@ class SusuGroup:
             "recipient": recipient,
             "amount": pot,
         }
+
+    def report(self):
+        members = []
+        for key in self.member_order:
+            paid = self.payments[key]
+            owed = self.remaining_this_week(key)
+            if owed == 0:
+                status = "PAID IN FULL"
+            elif paid == 0:
+                status = "NOT PAID"
+            else:
+                status = "PARTIALLY PAID"
+            members.append({
+                "name": self.members[key],
+                "paid": paid,
+                "owes": owed,
+                "status": status,
+            })
+
+        return {
+            "weekly_contribution": self.weekly_contribution,
+            "current_week": self.current_week,
+            "members": members,
+            "collected": sum(self.payments.values()),
+            "expected_pot": len(self.member_order) * self.weekly_contribution,
+            "payout_history": list(self.payout_history),
+        }
+
+
+def print_close_result(result):
+    if not result["closed"]:
+        print(f"\nWeek {result['week']} cannot close.")
+        print("No payout has been made.")
+        print("Outstanding contributions:")
+        for item in result["outstanding"]:
+            print(f"  {item['name']}: owes {format_money(item['owes'])}")
+        return
+
+    print(f"\nWeek {result['week']} closed successfully.")
+    print(f"Payout recipient: {result['recipient']}")
+    print(f"Pot paid: {format_money(result['amount'])}")
+
+
+def print_report(data):
+    print("\n========== SUSU REPORT ==========")
+    print(f"Weekly contribution: {format_money(data['weekly_contribution'])}")
+    print(f"Current week: {data['current_week']}")
+    print(f"Number of members: {len(data['members'])}")
+    print("\nMember contributions for the current week:")
+    if not data["members"]:
+        print("  No members have been added.")
+    for member in data["members"]:
+        print(
+            f"  {member['name']}: "
+            f"paid {format_money(member['paid'])}, "
+            f"owes {format_money(member['owes'])} "
+            f"({member['status']})"
+        )
+    print(f"\nCollected this week: {format_money(data['collected'])}")
+    print(f"Expected pot: {format_money(data['expected_pot'])}")
+    print("\nPayout history:")
+    if not data["payout_history"]:
+        print("  No payouts have been made.")
+    for payout in data["payout_history"]:
+        print(
+            f"  Week {payout['week']}: "
+            f"{payout['recipient']} received "
+            f"{format_money(payout['amount'])}"
+        )
+    print("=================================")
+
+
+def main():
+    print("=== SUSU GROUP MANAGER ===")
+    while True:
+        try:
+            weekly_amount = parse_money(
+                input("Enter weekly contribution in GHS (e.g. 50.00): ")
+            )
+            break
+        except ValueError as error:
+            print(f"Error: {error}")
+
+    group = SusuGroup(weekly_amount)
+
+    while True:
+        print(
+            "\n--- MENU ---\n"
+            "1. Add member\n"
+            "2. Record contribution\n"
+            "3. Close current week\n"
+            "4. Show report\n"
+            "5. Exit"
+        )
+        choice = input("Choose an option: ").strip()
+        try:
+            if choice == "1":
+                name = group.add_member(input("Enter member name or ID: "))
+                print(f"Added member: {name}")
+            elif choice == "2":
+                name = input("Enter member name or ID: ")
+                amount = parse_money(input("Enter amount paid in GHS: "))
+                recorded = group.record_contribution(name, amount)
+                print(
+                    f"Recorded {format_money(recorded['paid'])} for "
+                    f"{recorded['name']}, week {recorded['week']}. "
+                    f"Total paid: {format_money(recorded['total_paid'])}."
+                )
+            elif choice == "3":
+                print_close_result(group.close_week())
+            elif choice == "4":
+                print_report(group.report())
+            elif choice == "5":
+                print("Goodbye.")
+                break
+            else:
+                print("Invalid option. Choose 1 to 5.")
+        except ValueError as error:
+            print(f"Error: {error}")
+
+
+if __name__ == "__main__":
+    main()
+
