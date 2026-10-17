@@ -62,3 +62,30 @@ class SusuGroup:
         self.member_order.append(key)
         self.payments[key] = 0
         return name
+
+    def remaining_this_week(self, key):
+        return self.weekly_contribution - self.payments[key]
+
+    def record_contribution(self, name, amount):
+        key = name.strip().casefold()
+        if key not in self.members:
+            raise ValueError(f"Unknown member: '{name}'.")
+
+        if amount <= 0:
+            raise ValueError("Contribution must be greater than zero.")
+
+        remaining = self.remaining_this_week(key)
+        if amount > remaining:
+            raise ValueError(
+                f"{self.members[key]} owes only {format_money(remaining)} this week."
+            )
+
+        self.payments[key] += amount
+        self.started = True
+        return {
+            "name": self.members[key],
+            "week": self.current_week,
+            "paid": amount,
+            "total_paid": self.payments[key],
+            "owes": self.remaining_this_week(key),
+        }
