@@ -1,4 +1,4 @@
-"""Money helpers for susu contributions, stored as integer pesewas."""
+"""Rotating savings group (susu) with exact GHS money handling."""
 
 from decimal import Decimal, InvalidOperation
 import re
@@ -29,3 +29,36 @@ def format_money(pesewas):
     cedis = pesewas // 100
     remaining = pesewas % 100
     return f"GHS {cedis}.{remaining:02d}"
+
+
+class SusuGroup:
+    """One susu group with a fixed weekly contribution and ordered members."""
+
+    def __init__(self, weekly_contribution):
+        if weekly_contribution <= 0:
+            raise ValueError("Weekly contribution must be positive.")
+
+        self.weekly_contribution = weekly_contribution
+        self.members = {}
+        self.member_order = []
+        self.payments = {}
+        self.payout_history = []
+        self.current_week = 1
+        self.started = False
+
+    def add_member(self, name):
+        name = name.strip()
+        if not name:
+            raise ValueError("Member name cannot be empty.")
+
+        key = name.casefold()
+        if key in self.members:
+            raise ValueError(f"Member '{name}' already exists.")
+
+        if self.started:
+            raise ValueError("Members cannot be added after contributions begin.")
+
+        self.members[key] = name
+        self.member_order.append(key)
+        self.payments[key] = 0
+        return name
